@@ -1,0 +1,99 @@
+<!--  
+Created on Sep 2, 2016
+@author: Igor Dean
+-->
+
+<html>
+  <head>
+    <title>Basic Appointments Scheduler</title>
+    <script type="text/javascript" src="/static/jquery-3.1.0.min.js"></script>
+    
+   	<link rel="stylesheet" type="text/css" href="/static/jquery.timepicker.css" />   
+   	<link rel="stylesheet" type="text/css" href="/static/bootstrap-datepicker.css" />    
+
+  	<script type="text/javascript" src="/static/jquery.timepicker.js"></script>   	
+  	<script type="text/javascript" src="/static/bootstrap-datepicker.js"></script>
+  	
+	<script type="text/javascript" src="/static/date.format.js"></script>
+	<script type="text/javascript" src="/static/igor-appointment-app-scripts.js"></script>	
+	
+	<script>
+	  $(document).ready(function(){
+    	//---Hide Forom---
+		$("#fform").hide();
+		//---Populate appointments---
+		getAppointments();
+    	//---DATE and TIME pickers---
+    	$('#fdate').datepicker();	
+    	$( "#ftime" ).timepicker({ timeFormat: 'H:i' });
+    	//------NEW------
+    	$("#fnew").click(function(){
+        	$("#fform").show(100);
+        	$("#fnew").hide(); 
+    	});
+    	//------CANCEL------
+    	$("#fcancel").click(function(){
+        	$("#fform").hide(100);
+        	$("#fnew").show();   
+    	});   
+    	//------SEARCH------ 
+    	$("#bsearch").click(function(){
+    		var searchString = $("#tsearch").val();
+    		getAppointments(searchString);
+    		$("#tsearch").focus();
+    	});
+	  }); 
+	</script>
+  </head>
+  
+  <body>
+    <table cellpadding="20"><tr><td>
+    <h2>Basic Appointments Scheduler</h2>
+	<button id="fnew" width="60">New</button>
+    <!--------------------------- DJANGO Form ----------------------------------->
+	<form id="fform" action="/app/" accept-charset="utf-8">
+	    {% csrf_token %}
+  		<button id="fadd" type="submit" formmethod="post" form="fform">Add</button>
+  		<button id="fcancel" type="reset">Cancel</button><br><br>
+  		<label for="fdate">DATE:</label> <input type="text" id="fdate" name="date"><br><br>
+  		<label for="ftime">TIME:</label> <input type="text" id="ftime" name="time"><br><br>
+  		<label for="fdesc">DESC:</label> <input type="text" id="fdesc" name="desc" size="47"><br>
+	</form> 
+	<!--------------------------- AJAX Search ------------------------------------> 
+	<br><br>
+	<label for="test"><b>Description:</b></label><br> 
+	<input type="text" id="tsearch" name="search" size="42">
+	<button id="bsearch">SEARCH</button> 
+    <br><br><br>
+  
+    <!--------------------------- DJANGO Table ---(Removed for dynamic AJAX table)---
+    {% if apt_list %}
+    <table id="ftable" border="1" cellpadding="5">
+    	<th>Date</th>
+    	<th>Time</th>
+		<th>Description</th>
+       {% for apt in apt_list %}
+     	<tr>
+     		<td>{{ apt.appointment_date|date:"M d" }}</td>
+     		<td>{{ apt.appointment_date|date:"h:i a" }}</td>
+        	<td>{{ apt.appointment_text }}</td>	
+        </tr>
+       {% endfor %}
+    </table>
+    {% else %}
+    <p>No appointments are scheduled.</p>
+    {% endif %}
+    --------------------------- AJAX Table ------------------------------------->
+	<label for="ttable"><b>Appointments:</b></label>
+	<table id="ttable" border="1" cellpadding="5">
+ 		<th>Date</th>
+ 		<th>Time</th>
+ 		<th>Description</th>
+ 		<tbody id="tbody">
+ 		</tbody>
+	</table>
+	</tr></td> 
+	</table>
+	<!-------------------------------------------------------------------------->
+  </body>
+</html>

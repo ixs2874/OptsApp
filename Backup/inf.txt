@@ -1,0 +1,2 @@
+http://www.tangowithdjango.com/book/chapters/ajax.html
+http://getbootstrap.com/getting-started/#download

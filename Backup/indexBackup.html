@@ -1,0 +1,180 @@
+<html>
+  <head>
+    <title>Basic Appointments Scheduler</title>
+    <script type="text/javascript" src="/static/jquery-3.1.0.min.js"></script>
+    
+   	<link rel="stylesheet" type="text/css" href="/static/jquery.timepicker.css" />   
+   	<link rel="stylesheet" type="text/css" href="/static/bootstrap-datepicker.css" />    
+
+  	<script type="text/javascript" src="/static/jquery.timepicker.min.js"></script>   	
+  	<script type="text/javascript" src="/static/bootstrap-datepicker.js"></script>
+  	
+	<script type="text/javascript" src="/static/jquery-dateFormat.js"></script>
+	<script type="text/javascript" src="/static/date.format.js"></script>
+	<script type="text/javascript" src="/static/igor-apptss.js"></script>	
+	
+	<script>
+$(document).ready(function(){
+//type="text/javascript" src="/static/jquery-dateFormat.js"
+//type="text/javascript" src="/static/dateFormat.min.js"
+    //$("#ttable").hide();
+	$("#fform").hide();
+	
+    processAJAX();
+    
+    $('#fdate').datepicker();	
+    $( "#ftime" ).timepicker({ timeFormat: 'H:i' });
+    
+
+    $("#fnew").click(function(){
+        $("#fform").show(100);
+        $("#fnew").hide(); 
+    });
+    $("#fcancel").click(function(){
+        $("#fform").hide(100);
+        $("#fnew").show();   
+    });
+    
+    
+    //---Register Search button to trigger AJAX action------- 
+    $("#bsearch").click(function(){
+    	processAJAX();
+    });//------end of Search click event------ 
+ 
+
+});//-------end of ready function
+
+function processAJAX(){
+	
+    var searchString = $("#tsearch").val();
+    //-----get csrf token from cookies----
+		var csrftoken = getCookie('csrftoken');
+    $.ajaxSetup({
+        headers: { "X-CSRFToken": csrftoken }
+    });   
+    //------AJAX Call-------
+    $.ajax({
+        type: 'GET',
+        dataType: 'json',
+        contentType: 'application/json; charset=utf-8',
+        url: '/app/',
+        //-------send data to server---------------
+        data: {'search' : searchString},
+
+        //-------handle successful response--------
+        success : function(json) {
+            //----get data from server posted as a message
+            json_data = JSON.parse(json);
+            if (json_data.error) { 
+                alert(json_data.error_text);
+            } else {  // Success - populate HTML table with json data
+            	populateTable( json_data );
+            }
+            //$('body').append("<p>"+JSON.stringify(json_data)+"</p>");
+        },
+        //-------handle a unsuccessful response----------
+        error : function(xhr,errmsg,err) {
+        	alert(errmsg+": "+err);  //show Error message
+            console.log(xhr.status + ": " + xhr.responseText); // log error to the console
+        }
+    });//-------end of AJAX call-----------
+ } 
+
+function populateTable( json_data ) {
+	//alert("Success: "+json_data+" length="+json_data.length); 
+	$("#ftable").hide();
+	//$("#tbody").find("tr:gt(0)").remove();
+	//$("#tbody").children( 'tr:not(:first)' ).remove();
+	$("#tbody").children( 'tr' ).remove();
+
+	var tr;
+    for (var i = 0; i < json_data.length; i++) {
+    	//alert(JSON.stringify(json_data[i]))
+    	//alert(json_data[i].fields.appointment_text+" -> "+json_data[i].fields.appointment_date)
+    	//var date = new Date(json_data[i].fields.appointment_date.replace("T", " "));
+    	var date = new Date(json_data[i].fields.appointment_date);
+    	//alert(date.format('h:i a'));
+
+    	//var formatted = $.datepicker.formatDate("M d, yy", new Date());
+    	//$.format(new Date(), "dd M yy");
+        //$.format.parseDate('1982-10-15T01:10:20Z')
+        //alert(DateFormat.format(new Date(), "dd M yy"));
+    //alert(json_data[i].fields.appointment_date+" -> "+date); //+" -> "+time);
+        tr = $('<tr/>');
+        tr.append("<td>" + date.format('M jS, Y') + "</td>");
+        tr.append("<td>" + date.format('h:i a') + "</td>");
+        tr.append("<td>" + json_data[i].fields.appointment_text + "</td>");
+       // tr.append("<td>" + json[i].team + "</td>");
+        $("#tbody").append(tr);
+        $("#ttable").show();
+    }
+}
+
+//Gets cookie value for given cookie name (for CSRF token)
+function getCookie(name) {
+          var cookieValue = null;
+          if (document.cookie && document.cookie != '') {
+                var cookies = document.cookie.split(';');
+              
+          for (var i = 0; i < cookies.length; i++) {
+               var cookie = jQuery.trim(cookies[i]);
+           
+          		// check if this cookie name matches the searched cookie?
+          	   if (cookie.substring(0, name.length + 1) == (name + '=')) {
+            		cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            		//alert(cookieValue)
+              		break;
+               }
+          }
+      }
+ return cookieValue;
+}    
+
+	</script>
+  </head>
+  <body>
+  <h2>Basic Appointments Scheduler</h2>
+	<button id="fnew" width="60">New</button>
+    <!--------------------------- DJANGO Form ---------------------------------->
+	<form id="fform" action="/app/" accept-charset="utf-8">
+	    {% csrf_token %}
+  		<button id="fadd" type="submit" formmethod="post" form="fform">Add</button>
+  		<button id="fcancel" type="reset">Cancel</button><br><br>
+  		<label for="fdate">DATE</label> <input type="text" id="fdate" name="date"><br><br>
+  		<label for="ftime">TIME</label> <input type="text" id="ftime" name="time"><br><br>
+  		<label for="fdesc">DESC</label> <input type="text" id="fdesc" name="desc" size="47"><br>
+	</form> 
+	<!--------------------------- AJAX Form -------------------------------------> 
+	<br><br>
+	<label for="test">Desctiption</label><br> 
+	<input type="text" id="tsearch" name="search" size="42">
+	<button id="bsearch">SEARCH</button> 
+    <br><br><br>
+    <!--------------------------- DJANGO Table ----------- Removed ------------------
+    {% if apt_list %}
+    <table id="ftable" border="1" cellpadding="5">
+    	<th>Date</th>
+    	<th>Time</th>
+		<th>Description</th>
+       {% for apt in apt_list %}
+     	<tr>
+     		<td>{{ apt.appointment_date|date:"M d" }}</td>
+     		<td>{{ apt.appointment_date|date:"h:i a" }}</td>
+        	<td>{{ apt.appointment_text }}</td>	
+        </tr>
+       {% endfor %}
+    </table>
+    {% else %}
+    <p>No appointments are scheduled.</p>
+    {% endif %}
+    --------------------------- AJAX Table ----------------------------------->
+	<table id="ttable" border="1" cellpadding="5">
+ 		<th>Date</th>
+ 		<th>Time</th>
+ 		<th>Description</th>
+ 		<tbody id="tbody">
+ 		</tbody>
+	</table> 
+	<!-------------------------------------------------------------------------->
+  </body>
+</html>

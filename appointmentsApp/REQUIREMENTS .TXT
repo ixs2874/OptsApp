@@ -1,0 +1,20 @@
+
+Python version:
+	python -V
+	Python 3.5.1 :: Anaconda 4.0.0 (64-bit)
+Django version:
+	python -c "import django; print(django.get_version())"
+	1.9.5
+SQLite version:
+    sqlite> select sqlite_version();
+    3.14.1
+    
+Install Django within Anaconda env:
+    conda install django
+        
+Some useful commands:
+	python manage.py makemigrations appointmentsApp
+	python manage.py sqlmigrate appointmentsApp 0001
+	python manage.py check
+	python manage.py migrate
+	python manage.py shell
