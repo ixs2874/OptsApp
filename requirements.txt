@@ -1,0 +1,4 @@
+Django==1.8.4
+django-mailbox==4.5.4
+flake8==3.0.4
+
