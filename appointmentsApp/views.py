@@ -3,98 +3,122 @@ Created on Sep 2, 2016
 
 @author: Igor Dean
 '''
+import logging
 from django.http import HttpResponse
 from django.template import loader
 from django.http import JsonResponse
 from .models import Appointment
-#from .getAppointments import AppointmentsHandler 
-
+from django.db import connection
+from django.core import serializers
+# from .getAppointments import AppointmentsHandler
    
-#Process both HTML Form and AJAX requests         
+log = logging.getLogger(__name__)
+
+
 def index(request):
-    print ("Processing " + request.method + " request.")
+    """Process both HTML Form and AJAX requests
+
+    :param request: HTTP request to be processed.
+    :return: HTTP or JSON Response.
+    """
+    log.info("Processing {} request.".format(request.method))
     
-    #handler = getattr(AppointmentsHandler(), "getAppointmets")
-    #handler(request)
+    # handler = getattr(AppointmentsHandler(), 'get_appointmets')(request)
     
-    if(request.method == 'POST'):
-        
+    if request.method == 'POST':
+
         date = _reformat_date(request.POST.get('date', ''))
-        if(date is None): 
-            print("DATE is Missing")
-        
+        if date is None:
+            log.info("DATE is Missing")
+
         time = request.POST.get('time', '')
-        if(not time): 
-            print("TIME is Missing")
-        
+        if not time:
+            log.info("TIME is Missing")
+
         desc = request.POST.get('desc', '')
         dup = False
-        if(not desc): 
-            print("DESCRIPTION is Missing")
-        else: #workaround of duplicated form submission on page reload
-            dt = date +' '+ time  +':00'
-            res = getDataViaDbConnection(desc, dt)
-            if(len(res) > 0):
+        if not desc:
+            log.info("DESCRIPTION is Missing")
+        else:  # workaround of duplicated form submission on page reload
+            dt = date + ' ' + time + ':00'
+            if len(is_duplicate(desc, dt)) > 0:
                 dup = True
-                print("DUPLICATE ENTRY")
-            
-        if(date and time and desc and not dup):
-            date_time = date +'T'+ time  +'-04:00'
-            print ("Saving Record: Datetime: '" + date_time +"' Description: " + desc)
+                log.info("DUPLICATE ENTRY")
+
+        if date and time and desc and not dup:
+            date_time = date + 'T' + time + '-04:00'
+            print("Saving Record: Datetime: '{}' Description: {}".format(date_time, desc))
             appointment_obj = Appointment(appointment_text=desc, appointment_date=date_time)
             appointment_obj.save()
         else:
-            print("Record is Not saved!")  
-                   
+            log.info("Record is Not saved!")
     else:      
         if request.is_ajax():
-            print ("++++++AJAX Call++++++")
-            #Always use get on request.POST. Correct way of querying a QueryDict.
-            searchStr = request.GET.get('search','')  
-            print ("=>Searching for ' "+searchStr+" '")     
-            data = getAppointmentsData(searchStr)    
-            #Returning same data back to browser.It is not possible with Normal submit
+            log.info("++++++AJAX Call++++++")
+            # Always use get on request.POST. Correct way of querying a QueryDict.
+            search_str = request.GET.get('search')
+            if search_str is not None:
+                log.info("Searching for '{}'".format(search_str))
+            data = getAppointmentsData(search_str)
+            # Returning same data back to browser. It is not possible with Normal submit
             return JsonResponse(data, safe=False)
-        
-    #Sort Appointments by Date    
+
+    # Get first 50 appointments sorted by Date.
     applist = Appointment.objects.order_by('appointment_date')[:50]
     template = loader.get_template('appointmentsApp/index.html')
-    context = { 'apt_list': applist, }
+    context = {'apt_list': applist, }
         
     return HttpResponse(template.render(context, request))    
 
-# Retrieves data from database via DJango model and returns it as JSON doc.
-from django.core import serializers
-def getAppointmentsData(searchStr):
 
-    if( not(searchStr is None)):
-        print("=>Select appointments WHERE description contains \""+searchStr+"\"")
-        #data = getDataViaDbConnection(searchStr)
+def getAppointmentsData(searchStr):
+    """Gets first 50 records of the search result ordered by appointment date.
+
+    Retrieves data from database via Django model and returns it as JSON doc.
+    :param searchStr: String to search for.
+    :return: Serialized result set in json format.
+    """
+
+    if searchStr is not None:
+        log.info("Select appointments WHERE description contains \""+searchStr+"\"")
+        # data = getDataViaDbConnection(searchStr)
         data = Appointment.objects.filter(appointment_text__icontains=searchStr).order_by('appointment_date')[:50]
 
-        #print(data.values("appointment_date", "appointment_text"))
+        # log.info(data.values("appointment_date", "appointment_text"))
     else:
-        print("=>Select all appointments and sort by appointment date")
+        print("Select all appointments and sort by appointment date")
         data = Appointment.objects.all().order_by('appointment_date')[:50]
-    #convert data into JSON format
+
+    # convert data into JSON format
     json_data = serializers.serialize("json", data)
     return json_data
 
-#Move year from end of the string to front and replace '/' delimiters with '-' char
+
 def _reformat_date(date):
-    if(not date):
+    """Formats the date string.
+
+    Move year from end of the string to front and replace '/' delimiters with '-' char.
+    :param date: The date to be formatted.
+    :return: The date as string.
+    """
+
+    if not date:
         return None
     temp = date.split("/")
     temp.insert(0, temp.pop(2))
     return '-'.join(temp)  
 
-# Retrieves data thru DJango DB connection object. Note: not used in this program.
-from django.db import connection    
-def getDataViaDbConnection(searchStr, datetime):
+
+def is_duplicate(searchStr, datetime):
+    """Performs search of the appointment text in the appointments table by given string.
+
+    Retrieves data thru Django DB connection object. Note: not used in this program.
+    :param searchStr: String to be serched for.
+    :param datetime: Date to be searched by.
+    :return: List of records containing the search string.
+    """
     query = "SELECT appointment_text FROM appointmentsApp_appointment WHERE appointment_text LIKE '%"+searchStr+"%'"
     # AND appointment_date = '"+datetime+"'"
     cursor = connection.cursor()
     cursor.execute(query)
     return cursor.fetchall()
-    
-

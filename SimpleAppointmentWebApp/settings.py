@@ -127,3 +127,73 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
+
+# Logging:
+DEFAULT_LEVEL = 'INFO'
+PROPAGATE_FLAG = False
+FORMATTER = ['brief', 'simple', 'trace', 'verbose']
+FORMAT_LEVEL = int(os.getenv('EME_LOG_FORMAT_LEVEL', 2))
+
+LOGGING = {
+    'version': 1,
+    'formatters': {
+        'brief': {
+            'format': '%(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s: %(message)s'
+        },
+        'trace': {
+            'format': '%(levelname)s: [%(name)s: %(lineno)d] >> %(message)s'
+        },
+        'verbose': {
+            'format': '%(levelname)s: [%(asctime)s] - [%(name)s: %(lineno)d] >> %(message)s'
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': DEFAULT_LEVEL,
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': FORMATTER[FORMAT_LEVEL]
+        },
+        # 'log_db': {
+        #     'class': 'log_database.handlers.DBHandler',
+        #     'model': 'log_database.models.EmailErrorLog',
+        #     'expiry': 86400 * 4,  # rotate every 4 days
+        # },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],  # 'log_db'],
+            'level': DEFAULT_LEVEL,
+            'propagate': PROPAGATE_FLAG,
+        },
+        'django': {
+            'handlers': ['console'],  # 'log_db'],
+            'level': DEFAULT_LEVEL,
+            'propagate': PROPAGATE_FLAG,
+        },
+        'api.views': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': PROPAGATE_FLAG,
+        },
+        'parsers': {
+            'handlers': ['console'],  # 'log_db'],
+            'level': DEFAULT_LEVEL,
+            'propagate': PROPAGATE_FLAG,
+        },
+        'processors': {
+            'handlers': ['console'],  # 'log_db'],
+            'level': DEFAULT_LEVEL,
+            'propagate': PROPAGATE_FLAG,
+        },
+    },
+}
