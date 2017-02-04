@@ -1,16 +1,19 @@
-'''
+"""
 Created on Sep 2, 2016
 
 @author: Igor Dean
-'''
+"""
+
 import logging
+from datetime import datetime
+
 from django.http import HttpResponse
 from django.template import loader
 from django.http import JsonResponse
-from .models import Appointment
 from django.db import connection
 from django.core import serializers
-# from .getAppointments import AppointmentsHandler
+
+from .models import Appointment
    
 log = logging.getLogger(__name__)
 
@@ -23,32 +26,29 @@ def index(request):
     """
     log.info("Processing {} request.".format(request.method))
     
-    # handler = getattr(AppointmentsHandler(), 'get_appointmets')(request)
-    
     if request.method == 'POST':
 
         date = _reformat_date(request.POST.get('date', ''))
-        if date is None:
-            log.info("DATE is Missing")
-
         time = request.POST.get('time', '')
-        if not time:
-            log.info("TIME is Missing")
-
         desc = request.POST.get('desc', '')
         dup = False
+
+        if date is None:
+            log.info("DATE is Missing")
+        if not time:
+            log.info("TIME is Missing")
         if not desc:
             log.info("DESCRIPTION is Missing")
-        else:  # workaround of duplicated form submission on page reload
-            dt = date + ' ' + time + ':00'
-            if len(is_duplicate(desc, dt)) > 0:
+        else:  # workaround for duplicate form submission on page reload
+            dt = datetime.strptime("{} {}:00".format(date, time), "%Y-%m-%d %H:%M:%S")
+            if _is_duplicate(desc.strip(), dt):
                 dup = True
                 log.info("DUPLICATE ENTRY")
 
         if date and time and desc and not dup:
-            date_time = date + 'T' + time + '-04:00'
-            print("Saving Record: Datetime: '{}' Description: {}".format(date_time, desc))
-            appointment_obj = Appointment(appointment_text=desc, appointment_date=date_time)
+            date_time = datetime.strptime("{} {}:00".format(date, time), "%Y-%m-%d %H:%M:%S")
+            log.info("Saving Record: Datetime: '{}' Description: {}".format(date_time, desc.strip()))
+            appointment_obj = Appointment(appointment_text=desc.strip(), appointment_date=date_time)
             appointment_obj.save()
         else:
             log.info("Record is Not saved!")
@@ -58,8 +58,10 @@ def index(request):
             # Always use get on request.POST. Correct way of querying a QueryDict.
             search_str = request.GET.get('search')
             if search_str is not None:
+                search_str = search_str.strip()
                 log.info("Searching for '{}'".format(search_str))
-            data = getAppointmentsData(search_str)
+
+            data = _get_appointments_data(search_str)
             # Returning same data back to browser. It is not possible with Normal submit
             return JsonResponse(data, safe=False)
 
@@ -71,7 +73,7 @@ def index(request):
     return HttpResponse(template.render(context, request))    
 
 
-def getAppointmentsData(searchStr):
+def _get_appointments_data(searchStr):
     """Gets first 50 records of the search result ordered by appointment date.
 
     Retrieves data from database via Django model and returns it as JSON doc.
@@ -80,13 +82,10 @@ def getAppointmentsData(searchStr):
     """
 
     if searchStr is not None:
-        log.info("Select appointments WHERE description contains \""+searchStr+"\"")
-        # data = getDataViaDbConnection(searchStr)
+        log.info("Select appointments WHERE description contains '{}'".format(searchStr))
         data = Appointment.objects.filter(appointment_text__icontains=searchStr).order_by('appointment_date')[:50]
-
-        # log.info(data.values("appointment_date", "appointment_text"))
     else:
-        print("Select all appointments and sort by appointment date")
+        log.info("Select all appointments and sort by appointment date")
         data = Appointment.objects.all().order_by('appointment_date')[:50]
 
     # convert data into JSON format
@@ -109,7 +108,7 @@ def _reformat_date(date):
     return '-'.join(temp)  
 
 
-def is_duplicate(searchStr, datetime):
+def _is_duplicate(searchStr, datetime):
     """Performs search of the appointment text in the appointments table by given string.
 
     Retrieves data thru Django DB connection object. Note: not used in this program.
@@ -117,8 +116,10 @@ def is_duplicate(searchStr, datetime):
     :param datetime: Date to be searched by.
     :return: List of records containing the search string.
     """
-    query = "SELECT appointment_text FROM appointmentsApp_appointment WHERE appointment_text LIKE '%"+searchStr+"%'"
-    # AND appointment_date = '"+datetime+"'"
+    query = "SELECT appointment_text FROM appointmentsApp_appointment " \
+            "WHERE appointment_text LIKE '%{}%' " \
+            "AND appointment_date = '{}'".format(searchStr, datetime)
+
     cursor = connection.cursor()
     cursor.execute(query)
-    return cursor.fetchall()
+    return bool(len(cursor.fetchall()) > 0)

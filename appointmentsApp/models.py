@@ -12,7 +12,6 @@ from django.forms.models import ModelForm
 class Appointment(models.Model):
     
     appointment_text = models.CharField(max_length=200)
-    
     appointment_date = models.DateTimeField('date published')
     
     def __str__(self):

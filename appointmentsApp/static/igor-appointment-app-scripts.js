@@ -48,6 +48,7 @@ function populateTable( json_data ) {
     for (var i = 0; i < json_data.length; i++) {
     	var date = new Date(json_data[i].fields.appointment_date);
         tr = $('<tr/>');
+        tr.append("<td>" + (i + 1) + "</td>");
         tr.append("<td>" + date.format('M jS, Y') + "</td>");
         tr.append("<td>" + date.format('H:i') + "</td>");
         tr.append("<td>" + json_data[i].fields.appointment_text + "</td>");
